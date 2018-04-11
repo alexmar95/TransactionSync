@@ -9,5 +9,4 @@ class Transaction(object):
         self.timestamp = time.time()
 
     def __str__(self):
-        return f'From: {self.src}\nTo: {self.dst}\nValue: {self.value}'
-
+        return 'From: %s\tTo: %s\tValue: %s' % (self.src, self.dst, self.value)

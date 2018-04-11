@@ -6,11 +6,6 @@
     "Cornel",
     "Daniel"
   ],
-  "databases": [
-    "127.0.0.1",
-    "127.0.0.2"
-  ],
-  "routers": [
-   "127.0.1.1"
-  ]
+  "databases": 7,
+  "routers": 4
 }

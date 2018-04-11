@@ -22,7 +22,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = json.load(open(args.config, 'r'))
-    assert args.name in config["clients"], f"Unregistered name: {args.name}"
+    assert args.name in config["clients"], "Unregistered name: %s" % args.name
 
     friends = [f for f in config["clients"] if f != args.name]
 
