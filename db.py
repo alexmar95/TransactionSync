@@ -1,6 +1,7 @@
 import argparse
-import rpyc
+import random
 
+import rpyc
 from rpyc.utils.registry import TCPRegistryClient
 from rpyc.utils.server import ThreadedServer
 
@@ -16,6 +17,8 @@ class Database(object):
 
         def __init__(self):
             self.record = []
+            self.fail_rate = 0.
+            self.registrar = TCPRegistryClient("localhost")
 
     instance = None
 
@@ -30,11 +33,15 @@ class Database(object):
     def __setattr__(self, name):
         return setattr(self.instance, name)
 
+    @staticmethod
+    def load_with(fail_rate):
+        Database().fail_rate = fail_rate
+
 
 class DatabaseService(rpyc.Service):
     ALIASES = ["DB"]
 
-    def exposed_register_transaction(self, transaction):
+    def exposed_coordinate_transaction(self, transaction):
         record = Database().record
         record.append(transaction)
 
@@ -42,9 +49,15 @@ class DatabaseService(rpyc.Service):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Whatever')
     parser.add_argument('--port', '-p', type=int, help='Port to use', default=12345)
+    parser.add_argument('--id', '-i', type=int, help='Unique number from 1-DB_count and the DB_count',
+                        default=[0, 1], nargs=2)
+    parser.add_argument('--seed', '-s', type=int, help='RNG seed', default=42)
     args = parser.parse_args()
 
-    print('Sanity check DB')
+    random.seed(args.seed)
 
-    server = ThreadedServer(DatabaseService, port=args.port, registrar=TCPRegistryClient("localhost"))
+    Database.load_with(random.uniform(.25, .5))
+    server = ThreadedServer(DatabaseService, port=args.port, registrar=Database().registrar)
+    print('Starting DatabaseService(id: %d/%d) on port %d with failure rate %f'
+          % (*args.id, args.port, Database().fail_rate))
     server.start()

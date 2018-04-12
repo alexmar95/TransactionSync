@@ -17,9 +17,14 @@ class Client(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Starts a client')
-    parser.add_argument('--name', '-n', type=str, help='Name to use', required=True)
     parser.add_argument('--config', type=str, default='tata_lor.json')
+    parser.add_argument('--name', '-n', type=str, help='Name to use', required=True)
+    parser.add_argument('--seed', '-s', type=int, help='RNG seed', default=42)
+
     args = parser.parse_args()
+
+    print('Sanity check Client')
+    random.seed(args.seed)
 
     config = json.load(open(args.config, 'r'))
     assert args.name in config["clients"], "Unregistered name: %s" % args.name
