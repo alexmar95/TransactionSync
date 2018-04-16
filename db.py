@@ -1,5 +1,6 @@
 import argparse
 import random
+from threading import Timer
 
 import rpyc
 from rpyc.utils.registry import TCPRegistryClient
@@ -16,9 +17,13 @@ class Database(object):
         # -modifying a dictionary in place(e.g.adding an item, or calling the clear method)
 
         def __init__(self):
-            self.record = []
+            self.id = 0
             self.fail_rate = 0.
+            self.port = 12345
+
             self.registrar = TCPRegistryClient("localhost")
+            self.record = []
+            self.pending_transactions = {}
 
     instance = None
 
@@ -34,17 +39,51 @@ class Database(object):
         return setattr(self.instance, name)
 
     @staticmethod
-    def load_with(fail_rate):
-        Database().fail_rate = fail_rate
+    def load_with(id, port, fail_rate):
+        d = Database()
+        d.id, d.port, d.fail_rate = id, port, fail_rate
 
 
 class DatabaseService(rpyc.Service):
     ALIASES = ["DB"]
 
-    def exposed_coordinate_transaction(self, transaction):
-        record = Database().record
-        record.append(transaction)
+    def exposed_transaction_request(self, transaction):
+        print("DB-%d: %s requested" % (Database().id, hash(transaction)))
+        if self.check_valid(transaction):
+            r = Database().prending_transactions
+            r[transaction] = {}
+        else:
+            return False
 
+        threads = []
+        for addr, port in Database().registrar.discover("DB"):
+            if port != Database().port:
+                r[transaction][addr, port] = False
+                threads.append(Timer(1., self.can_commit, args=((addr, port), transaction)))
+                threads[-1].start()
+
+        for t in threads:
+            t.join()
+
+        if all(Database().pending_transactions[transaction].values()):
+            pass
+        else:
+            return False
+
+    def can_commit(self, cohort, transaction):
+        addr, port = cohort
+        conn = rpyc.connect(addr, port)
+        if conn.root.vote_for(transaction):
+            Database().pending_transactions[transaction][cohort] = True
+
+    def exposed_vote_for(self, transaction):
+        if self.check_valid(transaction):
+            return True
+        else:
+            return False
+
+    def check_valid(self, transaction):
+        return True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Whatever')
@@ -56,8 +95,8 @@ if __name__ == '__main__':
 
     random.seed(args.seed)
 
-    Database.load_with(random.uniform(.25, .5))
+    Database.load_with(args.id, args.port, random.uniform(.0, .2))
     server = ThreadedServer(DatabaseService, port=args.port, registrar=Database().registrar)
     print('Starting DatabaseService(id: %d/%d) on port %d with failure rate %f'
-          % (*args.id, args.port, Database().fail_rate))
+          % (args.id[0], args.id[1], args.port, Database().fail_rate))
     server.start()

@@ -49,7 +49,6 @@ def main(args):
         port += 1
 
     for i, name in enumerate(config["clients"]):
-        break
         log_file = open(os.path.join(args.logdir, 'Client_%d.log' % port), 'w')
         p = Popen(["python", "client.py", "-n", name, '-s', str(args.seed + i)], stderr=log_file)
         processes.append(p)
