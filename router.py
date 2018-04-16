@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import random
 
 import rpyc
@@ -22,6 +23,12 @@ class RouterService(rpyc.Service):
                 break
         else:
             raise RuntimeError('No databases found with port %d' % cfg["database"])
+
+    def exposed_transaction_request(self, transaction):
+        return self.db_node.root.transaction_request(pickle.dumps(transaction))
+
+    def exposed_balance_check(self, name):
+        return self.db_node.root.balance_check()[name]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start router')

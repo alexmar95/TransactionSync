@@ -3,17 +3,28 @@ import json
 import random
 import time
 
+import rpyc
+from rpyc.utils.registry import TCPRegistryClient
+
 from transaction import Transaction
 
 
 class Client(object):
-    def __init__(self, name):
+    def __init__(self, name, registrar):
         self.name = name
+        self.registrar = registrar
 
     def transact(self, to, value):
         t = Transaction(self.name, to, value)
-        print(t)
+        router = self.get_closest_router()
+        if not router.root.transaction_request(t):
+            print("%s is a salty boi!" % self.name)
 
+    def get_closest_router(self):
+        l = self.registrar.discover("Router")
+        addr, port = random.choice(l)
+        print("I'm so glad to lose my money to %d" % port)
+        return rpyc.connect(addr, port)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Starts a client')
@@ -31,8 +42,8 @@ if __name__ == '__main__':
 
     friends = [f for f in config["clients"] if f != args.name]
 
-    c = Client(args.name)
+    c = Client(args.name, TCPRegistryClient("localhost"))
     while True:
+        time.sleep(random.uniform(3, 5))
         to = random.choice(friends)
         c.transact(to, random.randint(1, 15))
-        time.sleep(3 + random.uniform(0, 2))

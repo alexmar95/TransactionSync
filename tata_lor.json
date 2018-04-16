@@ -1,11 +1,11 @@
 {
-  "clients": [
-    "Dorel",
-    "Costel",
-    "Marcel",
-    "Cornel",
-    "Daniel"
-  ],
+  "clients": {
+    "Dorel": 100,
+    "Costel": 53,
+    "Marcel": 69,
+    "Cornel": 420,
+    "Daniel": 220
+  },
   "databases": 7,
   "routers": 4
 }
