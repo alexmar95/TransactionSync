@@ -1,13 +1,14 @@
 import argparse
 import json
-import pickle
 import random
 from threading import Timer
 
 import rpyc
+from rpyc.utils.classic import obtain
 from rpyc.utils.registry import TCPRegistryClient
 from rpyc.utils.server import ThreadedServer
-
+rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
+from stopit import ThreadingTimeout
 
 class Database(object):
     class __Database(object):
@@ -54,6 +55,8 @@ class DatabaseService(rpyc.Service):
     ALIASES = ["DB"]
 
     def exposed_transaction_request(self, transaction):
+        transaction = obtain(transaction)
+
         print("DB-%s: %s requested" % (str(Database().id), transaction))
         if self.check_valid(transaction):
             r = Database().pending_transactions
@@ -68,12 +71,15 @@ class DatabaseService(rpyc.Service):
                 threads.append(Timer(random.uniform(1., 5.), self.can_commit, args=((addr, port), transaction)))
                 threads[-1].start()
 
-        for t in threads:
-            t.join()
+        # bool(timeout_ctx) is True if execution completed normally and False if timed out
+        with ThreadingTimeout(5.) as timeout_ctx:
+            for t in threads:
+                t.join()
 
-        if all(r[transaction].values()):
+        if timeout_ctx and all(r[transaction].values()):
             for addr, port in r[transaction]:
-                rpyc.connect(addr, port).root.complete_transaction(transaction)
+                conn = rpyc.connect(addr, port)
+                conn.root.complete_transaction(transaction)
             else:
                 self.exposed_complete_transaction(transaction)
             return True
@@ -82,30 +88,40 @@ class DatabaseService(rpyc.Service):
 
     def can_commit(self, cohort, transaction):
         addr, port = cohort
-        print('Can %d commit to transaction' % port)
         conn = rpyc.connect(addr, port)
         if conn.root.vote_for(transaction):
             Database().pending_transactions[transaction][cohort] = True
 
     def exposed_vote_for(self, transaction):
+        transaction = obtain(transaction)
         if self.check_valid(transaction):
-            print('DB-%s: Sigur, unde semnez?' % str(Database().id))
             return True
         else:
             return False
 
     def check_valid(self, transaction):
-        rec = Database().record
-        return rec[transaction.src] >= transaction.value >= 0
+        balance = Database().record[transaction.src]
+        for t in Database().pending_transactions:
+            if t.src == transaction.src:
+                balance -= transaction.value
+            if t.dst == transaction.src:
+                balance += transaction.value
+
+        return balance >= transaction.value >= 0
 
     def exposed_complete_transaction(self, transaction):
+        transaction = obtain(transaction)
+
         d = Database()
         d.pending_transactions.pop(transaction, None)
         d.record[transaction.src] -= transaction.value
         d.record[transaction.dst] += transaction.value
 
     def exposed_balance_check(self):
-        return Database().record
+        d = Database()
+        result = {key: value for key, value in d.record.items()}
+        return result
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Whatever')

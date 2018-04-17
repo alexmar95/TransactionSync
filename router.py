@@ -1,10 +1,10 @@
 import argparse
-import pickle
 import random
 
 import rpyc
 from rpyc.utils.registry import TCPRegistryClient
 from rpyc.utils.server import ThreadedServer
+rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
 cfg = {
@@ -24,8 +24,11 @@ class RouterService(rpyc.Service):
         else:
             raise RuntimeError('No databases found with port %d' % cfg["database"])
 
+    def on_disconnect(self):
+        self.db_node = None
+
     def exposed_transaction_request(self, transaction):
-        return self.db_node.root.transaction_request(pickle.dumps(transaction))
+        return self.db_node.root.transaction_request(transaction)
 
     def exposed_balance_check(self, name):
         return self.db_node.root.balance_check()[name]

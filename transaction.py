@@ -4,7 +4,8 @@ import time
 
 class Transaction(namedtuple('Transaction', ['src', 'dst', 'value', 'timestamp'])):
     def __new__(cls, *args, **kwargs):
-        kwargs['timestamp'] = time.time()
+        if len(args) <= 3:
+            kwargs['timestamp'] = time.time()
         return super().__new__(cls, *args, **kwargs)
 
     def __str__(self):

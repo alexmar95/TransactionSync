@@ -5,6 +5,7 @@ import time
 
 import rpyc
 from rpyc.utils.registry import TCPRegistryClient
+rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 from transaction import Transaction
 
@@ -17,13 +18,18 @@ class Client(object):
     def transact(self, to, value):
         t = Transaction(self.name, to, value)
         router = self.get_closest_router()
-        if not router.root.transaction_request(t):
-            print("%s is a salty boi!" % self.name)
+
+        me, it = router.root.balance_check(self.name), router.root.balance_check(to)
+        print("I(%s) had %d and %s had %d." % (self.name, me, to, it))
+        if router.root.transaction_request(t):
+            print("I(%s) now have %d and %s has %d." %
+                  (self.name, router.root.balance_check(self.name), to, router.root.balance_check(to)))
+        else:
+            print('%s be salty!' % self.name)
 
     def get_closest_router(self):
         l = self.registrar.discover("Router")
         addr, port = random.choice(l)
-        print("I'm so glad to lose my money to %d" % port)
         return rpyc.connect(addr, port)
 
 if __name__ == '__main__':
