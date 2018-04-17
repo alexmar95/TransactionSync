@@ -84,6 +84,11 @@ class DatabaseService(rpyc.Service):
                 self.exposed_complete_transaction(transaction)
             return True
         else:
+            for addr, port in r[transaction]:
+                conn = rpyc.connect(addr, port)
+                conn.root.rollback_transaction(transaction)
+            else:
+                self.exposed_rollback_transaction(transaction)
             return False
 
     def can_commit(self, cohort, transaction):
@@ -116,6 +121,12 @@ class DatabaseService(rpyc.Service):
         d.pending_transactions.pop(transaction, None)
         d.record[transaction.src] -= transaction.value
         d.record[transaction.dst] += transaction.value
+
+    def exposed_rollback_transaction(self, transaction):
+        transaction = obtain(transaction)
+
+        d = Database()
+        d.pending_transactions.pop(transaction, None)
 
     def exposed_balance_check(self):
         d = Database()
