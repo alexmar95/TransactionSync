@@ -47,15 +47,10 @@ def main(args):
         db_ports.append(port)
         port += 1
 
-    registrar = TCPRegistryClient(args.registrar)
-    addreses = ()
-    while not addreses:
-        addresses = registrar.discover("DB")
-
     for i in range(config["routers"]):
-        to = random.choice(addreses)
+        to = random.choice(db_ports)
         log_file = open(os.path.join(args.logdir, 'Router_%d.log' % port), 'w')
-        p = Popen(["python", "router.py", "-p", str(port), "-d", to[0], str(to[1]), '-s', str(args.seed + i), '-r', args.registrar], stderr=log_file)
+        p = Popen(["python", "router.py", "-p", str(port), "-d", "localhost", str(to), '-s', str(args.seed + i), '-r', args.registrar], stderr=log_file)
         processes.append(p)
         port += 1
 
