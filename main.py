@@ -4,6 +4,8 @@ import os
 import random
 from subprocess import Popen
 
+from rpyc.utils.registry import TCPRegistryClient
+
 
 def spawn_registry(log_to):
     r_log = open(os.path.join(log_to, 'Registry.log'), 'w')
@@ -27,30 +29,37 @@ def main(args):
     with open(args.config) as f:
         config = json.load(f)
 
-    processes = spawn_registry(args.logdir)
-    assert processes, "Unable to spawn registry"
+    if args.registrar == 'localhost':
+        processes = spawn_registry(args.logdir)
+        assert processes, "Unable to spawn registry"
+    else:
+        processes = []
 
     port = 5000
 
     db_ports = []
     for i in range(config["databases"]):
         log_file = open(os.path.join(args.logdir, 'DB_%d.log' % port), 'w')
-        p = Popen(["python", "db.py", "-p", str(port), '-i', str(i), str(config["databases"]), '-s', str(args.seed+i)],
+        p = Popen(["python", "db.py", "-p", str(port), '-i', str(i), str(config["databases"]), '-s', str(args.seed+i), '-r', args.registrar],
                   stderr=log_file)
         processes.append(p)
         db_ports.append(port)
         port += 1
 
+    input("Press any key when all databases initialized")
+    registrar = TCPRegistryClient(args.registrar)
+    addreses = registrar.discover("DB")
+
     for i in range(config["routers"]):
-        to = random.choice(db_ports)
+        to = random.choice(addreses)
         log_file = open(os.path.join(args.logdir, 'Router_%d.log' % port), 'w')
-        p = Popen(["python", "router.py", "-p", str(port), "-d", str(to), '-s', str(args.seed + i)], stderr=log_file)
+        p = Popen(["python", "router.py", "-p", str(port), "-d", to[0], str(to[1]), '-s', str(args.seed + i), '-r', args.registrar], stderr=log_file)
         processes.append(p)
         port += 1
 
     for i, name in enumerate(config["clients"]):
         log_file = open(os.path.join(args.logdir, 'Client_%d.log' % port), 'w')
-        p = Popen(["python", "client.py", "-n", name, '-s', str(args.seed + i)], stderr=log_file)
+        p = Popen(["python", "client.py", "-n", name, '-s', str(args.seed + i), '-r', args.registrar], stderr=log_file)
         processes.append(p)
         port += 1
 
@@ -64,5 +73,6 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, default='tata_lor.json')
     parser.add_argument('--logdir', type=str, default='logs')
     parser.add_argument('--seed', '-s', type=int, default=42)
+    parser.add_argument('--registrar', '-r', type=str, help='Registrar address', default='localhost')
 
     main(parser.parse_args())

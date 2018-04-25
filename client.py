@@ -37,6 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, default='tata_lor.json')
     parser.add_argument('--name', '-n', type=str, help='Name to use', required=True)
     parser.add_argument('--seed', '-s', type=int, help='RNG seed', default=42)
+    parser.add_argument('--registrar', '-r', type=str, help='Registrar address', default='localhost')
 
     args = parser.parse_args()
 
@@ -48,7 +49,7 @@ if __name__ == '__main__':
 
     friends = [f for f in config["clients"] if f != args.name]
 
-    c = Client(args.name, TCPRegistryClient("localhost"))
+    c = Client(args.name, TCPRegistryClient(args.registrar))
     while True:
         time.sleep(random.uniform(3, 5))
         to = random.choice(friends)

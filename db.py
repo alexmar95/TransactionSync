@@ -42,13 +42,14 @@ class Database(object):
         return setattr(self.instance, name)
 
     @staticmethod
-    def load_with(id, port, fail_rate, cfg):
+    def load_with(arg):
         d = Database()
-        with open(cfg, 'r') as f:
+        with open(arg.config, 'r') as f:
             clients = json.load(f)['clients']
 
         d.record = {name: balance for name, balance in clients.items()}
-        d.id, d.port, d.fail_rate = id, port, fail_rate
+        d.id, d.port, d.fail_rate = arg.id, arg.port, random.uniform(0., 2.)
+        d.registrar = TCPRegistryClient(arg.registrar)
 
 
 class DatabaseService(rpyc.Service):
@@ -141,11 +142,12 @@ if __name__ == '__main__':
                         default=[0, 1], nargs=2)
     parser.add_argument('--seed', '-s', type=int, help='RNG seed', default=42)
     parser.add_argument('--config', '-c', type=str, help='config file', default='tata_lor.json')
+    parser.add_argument('--registrar', '-r', type=str, help='Registrar address', default='localhost')
     args = parser.parse_args()
 
     random.seed(args.seed)
 
-    Database.load_with(args.id, args.port, random.uniform(.0, .2), args.config)
+    Database.load_with(args)
     server = ThreadedServer(DatabaseService, port=args.port, registrar=Database().registrar)
     print('Starting DatabaseService(id: %d/%d) on port %d with failure rate %f'
           % (args.id[0], args.id[1], args.port, Database().fail_rate))
