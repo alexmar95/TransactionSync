@@ -47,9 +47,10 @@ def main(args):
         db_ports.append(port)
         port += 1
 
-    sys.stdin.readline()
     registrar = TCPRegistryClient(args.registrar)
-    addreses = registrar.discover("DB")
+    addreses = ()
+    while not addreses:
+        addresses = registrar.discover("DB")
 
     for i in range(config["routers"]):
         to = random.choice(addreses)
