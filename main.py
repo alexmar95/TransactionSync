@@ -3,6 +3,7 @@ import json
 import os
 import random
 from subprocess import Popen
+import sys
 
 from rpyc.utils.registry import TCPRegistryClient
 
@@ -46,7 +47,7 @@ def main(args):
         db_ports.append(port)
         port += 1
 
-    input("Press any key when all databases initialized")
+    sys.stdin.readline()
     registrar = TCPRegistryClient(args.registrar)
     addreses = registrar.discover("DB")
 

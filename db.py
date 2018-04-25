@@ -48,7 +48,7 @@ class Database(object):
             clients = json.load(f)['clients']
 
         d.record = {name: balance for name, balance in clients.items()}
-        d.id, d.port, d.fail_rate = arg.id, arg.port, random.uniform(0., 2.)
+        d.id, d.port, d.fail_rate = arg.id, arg.port, random.uniform(0., .2)
         d.registrar = TCPRegistryClient(arg.registrar)
 
 
